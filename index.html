@@ -1,0 +1,454 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>IM KL - Performance Insights Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <style>
+    :root{ --c1:#03045E; --c2:#023E8A; --c3:#0077B6; --c4:#0096C7; --c5:#00B4D8; --bg:#f5f7fa; --card:#ffffff; --muted:#6b7280; }
+    *{box-sizing:border-box}
+    body{font-family:'EB Garamond', Georgia, serif; margin:0; background:var(--bg); color:#0b1726; display:flex; justify-content:center; padding:18px}
+    .wrap{max-width:1160px;width:100%}
+    .hero{position:relative;border-radius:12px;padding:28px 20px;margin-bottom:14px;overflow:hidden;background:linear-gradient(135deg,#03045E 0%, #0077B6 100%);color:white;box-shadow:0 10px 30px rgba(2,24,70,0.12);text-align:center}
+    .hero:before{content:'';position:absolute;inset:0;opacity:0.12;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='200'><defs><linearGradient id='g' x1='0' x2='1'><stop offset='0' stop-color='%23ffffff' stop-opacity='0.08'/><stop offset='1' stop-color='%23ffffff' stop-opacity='0.02'/></linearGradient></defs><rect width='1200' height='200' fill='url(%23g)'/><g fill='%23ffffff' fill-opacity='0.03'><circle cx='60' cy='40' r='40'/><circle cx='220' cy='40' r='40'/><circle cx='380' cy='40' r='40'/><circle cx='540' cy='40' r='40'/></g></svg>");background-repeat:no-repeat;background-position:center}
+    .hero h1{margin:0;font-size:24px;font-weight:700;letter-spacing:0.6px}
+    .hero p{margin:6px 0 0 0;font-size:13px;opacity:0.95}
+    .topbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;margin:14px 0;padding:12px;border-radius:10px;background:white;box-shadow:0 8px 24px rgba(3,16,43,0.04)}
+    .topbar input,.topbar select{padding:8px 10px;border-radius:8px;border:1px solid #e6eef9;font-size:13px}
+    .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+    .btn.primary{background:var(--c2);color:white}
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:stretch;margin-bottom:16px}
+    .kpi{padding:12px;border-radius:10px;color:white;box-shadow:0 8px 18px rgba(3,16,43,0.06);text-align:center}
+    .kpi .label{font-size:13px;opacity:0.9}
+    .kpi .value{font-size:18px;font-weight:700;margin-top:8px}
+    .pages-section{display:flex;justify-content:center;margin-bottom:16px}
+    .pages-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;max-width:1000px;width:100%}
+    .page-card{background:linear-gradient(180deg,#ffffff,#f6fdff);border-radius:10px;padding:12px;border:1px solid #e6f9ff;box-shadow:0 6px 18px rgba(2,46,90,0.03);display:flex;flex-direction:column;align-items:center;min-height:120px}
+    .page-title{font-weight:700;color:var(--c2);margin-bottom:8px;word-break:break-word}
+    .page-metrics{font-size:13px;color:var(--muted);text-align:center}
+    .metric-row{display:flex;gap:10px;justify-content:center;width:100%;margin-top:10px;flex-wrap:wrap}
+    .metric-block{background:#fff;padding:8px 10px;border-radius:8px;border:1px solid #eef8fb;min-width:84px;text-align:center}
+    .metric-value{font-weight:700;color:var(--c1);font-size:16px}
+    .top-panels{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px;align-items:stretch}
+    @media(max-width:980px){.top-panels{grid-template-columns:1fr}}
+    .panel{background:white;padding:12px;border-radius:10px;box-shadow:0 8px 20px rgba(3,16,43,0.04);display:flex;flex-direction:column}
+    .panel .title{text-align:center;font-weight:700;color:var(--c2);margin-bottom:8px}
+    .table-scroll{overflow:auto;max-height:320px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:8px;border-bottom:1px solid #eef3fb;text-align:left}
+    .view-btn{background:var(--c3);color:white;padding:6px 8px;border-radius:6px;text-decoration:none}
+    .muted{color:var(--muted);font-size:13px}
+    @media(max-width:900px){.pages-grid{grid-template-columns:repeat(1,1fr)}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>IM KL - Performance Insights Dashboard</h1>
+      <p>Clean, compact overview of followers, content and engagement — refreshed from your shared sheet.</p>
+    </div>
+
+    <div class="topbar">
+      <label>From <input id="from" type="text" autocomplete="off" placeholder="YYYY-MM-DD"></label>
+      <label>To <input id="to" type="text" autocomplete="off" placeholder="YYYY-MM-DD"></label>
+      <label>Platform <select id="platformFilter"><option>All</option><option>Instagram</option><option>Facebook</option></select></label>
+      <label>Page <select id="pageFilter"><option>All</option></select></label>
+      <button id="refreshBtn" class="btn primary">Refresh</button>
+      <button id="exportCsvBtn" class="btn">Export CSV</button>
+    </div>
+
+    <div id="kpiRow" class="kpi-row"></div>
+
+    <div class="pages-section">
+      <div id="pagesList" class="pages-grid"></div>
+    </div>
+
+    <div class="top-panels">
+      <div class="panel">
+        <div class="title">Top 5 posts by views</div>
+        <div id="top5Table" class="table-scroll"></div>
+      </div>
+      <div class="panel">
+        <div class="title">Quick insights</div>
+        <div id="quickInsights" class="muted" style="text-align:center"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="title">Full data</div>
+      <div id="fullTable" class="table-scroll"></div>
+    </div>
+
+    <div style="margin-top:10px" class="muted">Notes: Rows with post_type == REEL are excluded. Refresh downloads CSV from: <code>https://docs.google.com/spreadsheets/d/1q8TX-YPZ4jMLJIe9h3AIpFKiGOKZWt8LZFzJKYjoN_I/export?format=csv&gid=0</code></div>
+  </div>
+
+<script>
+  // injected by Python
+  let RAW_DATA = [{"platform": "Instagram", "page_name": "Trivandrum Updates", "post_date": "2025-11-04", "content_title": "Dhyan Sreenivasan", "post_type": "IMAGE", "is_video": 0, "likes": 15, "comments": 1, "share": 1, "saves": 1, "views": 1700, "followers": 290, "permalink": "https://instagram.com/p/abc1", "eng_mult": 0.05172413793103448, "eng_rate_pct": 6.206896551724138, "year_week": "2025-W45"}, {"platform": "Instagram", "page_name": "Trivandrum Updates", "post_date": "2025-11-03", "content_title": "Padmanabhaswamy Temple", "post_type": "IMAGE", "is_video": 0, "likes": 11, "comments": 1, "share": 1, "saves": 1, "views": 1311, "followers": 310, "permalink": "https://instagram.com/p/abc2", "eng_mult": 0.035483870967741936, "eng_rate_pct": 4.516129032258064, "year_week": "2025-W45"}, {"platform": "Instagram", "page_name": "Trivandrum Updates", "post_date": "2025-11-03", "content_title": "PM Shri", "post_type": "IMAGE", "is_video": 0, "likes": 7, "comments": 1, "share": 1, "saves": 1, "views": 678, "followers": 315, "permalink": "https://instagram.com/p/abc3", "eng_mult": 0.022222222222222223, "eng_rate_pct": 3.1746031746031744, "year_week": "2025-W45"}, {"platform": "Instagram", "page_name": "Trivandrum Updates", "post_date": "2025-11-04", "content_title": "Varkala harassment", "post_type": "IMAGE", "is_video": 0, "likes": 3, "comments": 1, "share": 1, "saves": 1, "views": 215, "followers": 339, "permalink": "https://instagram.com/p/abc4", "eng_mult": 0.008849557522123894, "eng_rate_pct": 1.7699115044247788, "year_week": "2025-W45"}, {"platform": "Instagram", "page_name": "Post Card Online", "post_date": "2025-11-02", "content_title": "New education reforms explaineda", "post_type": "IMAGE", "is_video": 0, "likes": 180, "comments": 14, "share": 6, "saves": 12, "views": 2400, "followers": 9400, "permalink": "https://instagram.com/p/abc5", "eng_mult": 19.302127659574467, "eng_rate_pct": 2.25531914893617, "year_week": "2025-W44"}, {"platform": "Instagram", "page_name": "Post Card Online", "post_date": "2025-11-06", "content_title": "Interview: Voices of the young votersa", "post_type": "VIDEO", "is_video": 1, "likes": 460, "comments": 42, "share": 22, "saves": 30, "views": 6100, "followers": 9460, "permalink": "https://instagram.com/p/abc6", "eng_mult": 1347.906976744186, "eng_rate_pct": 5.856236786469345, "year_week": "2025-W45"}, {"platform": "Instagram", "page_name": "Pathram Online", "post_date": "2025-11-03", "content_title": "Street art against corruptiona", "post_type": "IMAGE", "is_video": 0, "likes": 150, "comments": 10, "share": 5, "saves": 9, "views": 2000, "followers": 12000, "permalink": "https://instagram.com/p/abc7", "eng_mult": 5.625, "eng_rate_pct": 1.4500000000000002, "year_week": "2025-W45"}, {"platform": "Instagram", "page_name": "Pathram Online", "post_date": "2025-11-10", "content_title": "Farmers discuss sustainable futuresa", "post_type": "VIDEO", "is_video": 1, "likes": 310, "comments": 26, "share": 17, "saves": 23, "views": 4700, "followers": 12100, "permalink": "https://instagram.com/p/abc8", "eng_mult": 260.4512396694215, "eng_rate_pct": 3.1074380165289255, "year_week": "2025-W46"}, {"platform": "Facebook", "page_name": "News Then Channel", "post_date": "2025-11-03", "content_title": "aCitizens raise voice on civic issuesa", "post_type": "IMAGE", "is_video": 0, "likes": 140, "comments": 8, "share": 12, "saves": 10, "views": 2800, "followers": 10000, "permalink": "https://facebook.com/p/abc9", "eng_mult": 13.44, "eng_rate_pct": 1.7000000000000002, "year_week": "2025-W45"}, {"platform": "Facebook", "page_name": "News Then", "post_date": "2025-11-05", "content_title": "aExclusive: Interview with mayoral candidatea", "post_type": "VIDEO", "is_video": 1, "likes": 480, "comments": 38, "share": 28, "saves": 33, "views": 7000, "followers": 10100, "permalink": "https://facebook.com/p/abc10", "eng_mult": 1668.689108910891, "eng_rate_pct": 5.732673267326733, "year_week": "2025-W45"}, {"platform": "Instagram", "page_name": "Azeem", "post_date": "2025-11-05", "content_title": "aExclusive: Interview with mayoral candidatea", "post_type": "VIDEO", "is_video": 1, "likes": 480, "comments": 38, "share": 28, "saves": 33, "views": 7000, "followers": 10100, "permalink": "https://facebook.com/p/abc10", "eng_mult": 1668.689108910891, "eng_rate_pct": 5.732673267326733, "year_week": "2025-W45"}, {"platform": "Instagram", "page_name": "Rohit", "post_date": "2025-11-04", "content_title": "aExclusive: Interview with mayoral candidatea", "post_type": "VIDEO", "is_video": 1, "likes": 480, "comments": 38, "share": 28, "saves": 33, "views": 7000, "followers": 101000, "permalink": "https://facebook.com/p/abc11", "eng_mult": 166.86891089108912, "eng_rate_pct": 0.5732673267326732, "year_week": "2025-W45"}, {"platform": "Instagram", "page_name": "Rohit", "post_date": "2025-11-05", "content_title": "aExclusive: Interview with mayoral candidatea", "post_type": "VIDEO", "is_video": 1, "likes": 480, "comments": 38, "share": 28, "saves": 33, "views": 7000, "followers": 101000, "permalink": "https://facebook.com/p/abc12", "eng_mult": 166.86891089108912, "eng_rate_pct": 0.5732673267326732, "year_week": "2025-W45"}];
+  const CSV_URL = "https://docs.google.com/spreadsheets/d/1q8TX-YPZ4jMLJIe9h3AIpFKiGOKZWt8LZFzJKYjoN_I/export?format=csv&gid=0";
+  const APPS_SCRIPT_FALLBACK = "https://script.google.com/macros/s/AKfycbyD2XixYqutXLNbrhNlWfZI333aYIs8L1OZEDfON48Zf2gcar6c_RYUfb7-JgthEsdK/exec"; // apps script url or empty
+
+  // ====== FIXED DATE PARSING & DATE-ONLY COMPARISONS ======
+  // parse date safely and return a local-midnight Date (no UTC shift)
+  function parseDateSafe(s){
+    if(!s) return null;
+    const str = String(s).trim();
+    if(!str) return null;
+    // If YYYY-MM-DD or similar — parse parts to create local date at midnight
+    const m = str.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+    if(m){
+      const y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
+      if(!isNaN(y) && !isNaN(mo) && !isNaN(d)) return new Date(y, mo, d);
+    }
+    // Try Date constructor; if valid, convert to local-midnight date
+    const dt = new Date(str);
+    if(!isNaN(dt)){
+      return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    }
+    // fallback splitting
+    const parts = str.split(/[-\/]/);
+    if(parts.length >= 3){
+      const y = Number(parts[0]), mo = Number(parts[1]) - 1, d = Number(parts[2]);
+      if(!isNaN(y) && !isNaN(mo) && !isNaN(d)) return new Date(y, mo, d);
+    }
+    return null;
+  }
+
+  // return a date-only (local midnight) or null
+  function dateOnly(d){
+    if(!d) return null;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function fmtDate(s){ const d = parseDateSafe(s); if(!d) return ''; return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
+
+  // CSV parser that handles quoted fields (double quotes)
+  function parseCsvLine(line){
+    const out=[]; let cur=''; let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch === '"' && line[i+1] === '"'){ cur += '"'; i++; continue; }
+      if(ch === '"'){ inQ = !inQ; continue; }
+      if(ch === ',' && !inQ){ out.push(cur); cur = ''; continue; }
+      cur += ch;
+    }
+    out.push(cur);
+    return out;
+  }
+
+  // Normalize and prepare rows: convert numeric columns, compute derived fields
+  function prepareRows(rawRows){
+    const rows = (rawRows || []).map(r => {
+      // ensure keys exist
+      const obj = {};
+      obj.platform = (r.platform||'').toString().trim();
+      obj.page_name = (r.page_name||'').toString().trim();
+      obj.post_date = (r.post_date||r.post_date_string||'').toString().trim();
+      obj.content_title = (r.content_title||'').toString().trim();
+      obj.post_type = (r.post_type||'').toString().toUpperCase().trim();
+      obj.is_video = Number(r.is_video || 0);
+      obj.likes = Number(r.likes || 0);
+      obj.comments = Number(r.comments || 0);
+      obj.share = Number(r.share || 0);
+      obj.saves = Number(r.saves || 0);
+      obj.views = Number(r.views || 0);
+      obj.followers = Number(r.followers || 0);
+      obj.permalink = (r.permalink||'').toString().trim();
+      return obj;
+    });
+
+    // exclude REELs and filter out rows that are essentially empty (no content, no date, no engagement, and page_name empty)
+    function isValidRow(r){
+      const hasDate = !!parseDateSafe(r.post_date);
+      const hasTitle = (r.content_title || '').trim().length > 0;
+      const hasPage = (r.page_name || '').trim().length > 0;
+      const engagementSum = (Number(r.likes)||0) + (Number(r.comments)||0) + (Number(r.share)||0) + (Number(r.saves)||0) + (Number(r.views)||0);
+      return (hasPage && (hasDate || hasTitle || engagementSum>0)) || (engagementSum>0) || hasDate || hasTitle;
+    }
+
+    const filtered = rows.filter(r => (r.post_type || '').toUpperCase() !== 'REEL').filter(isValidRow);
+
+    // compute derived fields
+    filtered.forEach(r=>{
+      r.post_date_obj = parseDateSafe(r.post_date); // now a local-midnight date or null
+      r.post_date_display = fmtDate(r.post_date);
+      r.eng_mult = (r.likes * r.comments * r.share * r.saves) / (r.followers || 1);
+      r.eng_rate_pct = ((r.likes + r.comments + r.share + r.saves) / (r.followers || 1)) * 100;
+    });
+
+    return filtered;
+  }
+
+  function populatePageFilter(rows){
+    const sel = document.getElementById('pageFilter');
+    const pages = Array.from(new Set(rows.map(r=>r.page_name))).filter(x=>x);
+    const current = sel.value || 'All';
+    sel.innerHTML = '<option>All</option>';
+    pages.forEach(p => { const o = document.createElement('option'); o.value = p; o.text = p; sel.appendChild(o); });
+    if(Array.from(sel.options).some(opt=>opt.value===current)) sel.value = current;
+  }
+
+  function followersByPageAt(rows, uptoDate){
+    const byPage = {};
+    rows.forEach(r=>{
+      const d = r.post_date_obj || null;
+      if(!d && uptoDate) return;
+      if(uptoDate && d){
+        // compare date-only
+        if(dateOnly(d).getTime() > dateOnly(uptoDate).getTime()) return;
+      }
+      const key = r.page_name || '';
+      const t = d ? dateOnly(d).getTime() : 0;
+      if(!byPage[key] || (byPage[key].date || 0) < t){
+        byPage[key] = { val: r.followers || 0, date: t };
+      }
+    });
+    return byPage; // map page -> {val, date}
+  }
+
+  /* RENDER: KPIs, pages grid, tables — all use only valid rows (from prepareRows) */
+  function renderKPIs(filtered){
+    const allRows = prepareRows(RAW_DATA);
+    // latest followers map from all rows
+    const latestByPageAll = followersByPageAt(allRows, null);
+
+    // determine pages to sum
+    const pagesInView = Array.from(new Set(filtered.map(r => r.page_name))).filter(x=>x);
+    const platformSel = document.getElementById('platformFilter').value || 'All';
+    let pagesToSum = pagesInView.slice();
+    if(pagesToSum.length === 0 && platformSel !== 'All'){
+      pagesToSum = Array.from(new Set(allRows.filter(r=>r.platform === platformSel).map(r=>r.page_name))).filter(x=>x);
+    }
+    if(pagesToSum.length === 0){
+      pagesToSum = Object.keys(latestByPageAll);
+    }
+    // sum latest followers across pagesToSum
+    const total_followers = pagesToSum.reduce((s,p) => s + ((latestByPageAll[p] && latestByPageAll[p].val) || 0), 0);
+
+    // before_total: followers up to day before 'from'
+    const fromVal = document.getElementById('from').value;
+    const fromDate = fromVal ? parseDateSafe(fromVal) : null;
+    let before_total = 0;
+    if(fromDate){
+      const prev = new Date(dateOnly(fromDate).getTime() - 24*3600*1000);
+      const beforeByPage = followersByPageAt(allRows, prev);
+      before_total = pagesToSum.reduce((s,p) => s + ((beforeByPage[p] && beforeByPage[p].val) || 0), 0);
+    }
+    const followers_change = total_followers - before_total;
+
+    // KPIs from filtered rows
+    const validFiltered = prepareRows(filtered); // ensure we're using valid subset
+    const total_posts = validFiltered.length;
+    const total_videos = validFiltered.filter(r=>r.post_type === 'VIDEO').length;
+    const total_views = validFiltered.reduce((s,r)=>s + (r.views||0), 0);
+    const total_eng_sum = validFiltered.reduce((s,r)=>s + (r.eng_rate_pct || 0), 0).toFixed(1);
+
+    const kpiRow = document.getElementById('kpiRow');
+    const followers_label = `${total_followers} (${followers_change >= 0 ? '+' : ''}${followers_change})`;
+    const cards = [
+      {label:'Total engagement (sum %)', value: total_eng_sum, bg: 'linear-gradient(135deg,var(--c1),var(--c3))'},
+      {label:'Total followers (Δ)', value: followers_label, bg: 'linear-gradient(135deg,var(--c2),var(--c4))'},
+      {label:'Total views', value: total_views, bg: 'linear-gradient(135deg,var(--c3),var(--c5))'},
+      {label:'Total posts', value: total_posts, bg: 'linear-gradient(135deg,var(--c4),var(--c5))'},
+      {label:'Total videos', value: total_videos, bg: 'linear-gradient(135deg,var(--c1),var(--c2))'}
+    ];
+    kpiRow.innerHTML = cards.map(c=>`<div class="kpi" style="background:${c.bg}"><div class="label">${c.label}</div><div class="value">${c.value}</div></div>`).join('');
+  }
+
+  function renderPagesGrid(rows, filteredRows){
+    // rows = full prepared rows; filteredRows = filtered prepared rows
+    const all = prepareRows(rows);
+    const filtered = prepareRows(filteredRows);
+    const pages = Array.from(new Set(all.map(r=>r.page_name))).filter(x=>x);
+    const container = document.getElementById('pagesList');
+    let html = '';
+    pages.forEach(p=>{
+      const pageAll = all.filter(r=>r.page_name===p).slice().sort((a,b)=> (a.post_date_obj? a.post_date_obj.getTime():0) - (b.post_date_obj? b.post_date_obj.getTime():0));
+      const pageFiltered = filtered.filter(r=>r.page_name===p);
+      const latestFollowers = pageAll.length ? (pageAll[pageAll.length-1].followers || 0) : 0;
+      let followers_change = 0;
+      if(pageFiltered.length >= 2){
+        const earliest = pageFiltered.slice().sort((a,b)=> (a.post_date_obj? a.post_date_obj.getTime():0) - (b.post_date_obj? b.post_date_obj.getTime():0))[0].followers || 0;
+        const latest = pageFiltered.slice().sort((a,b)=> (b.post_date_obj? b.post_date_obj.getTime():0) - (a.post_date_obj? a.post_date_obj.getTime():0))[0].followers || 0;
+        followers_change = latest - earliest;
+      }
+      const totalEng = pageFiltered.reduce((s,r)=> s + (r.eng_rate_pct||0), 0).toFixed(1);
+      const postsCount = pageFiltered.length;
+      const videosCount = pageFiltered.filter(r=>r.post_type === 'VIDEO').length;
+      html += `<div class="page-card"><div class="page-title">${p}</div><div class="page-metrics">Followers: <strong>${latestFollowers}</strong> <span style="color:${followers_change>=0?'#0b6b3a':'#b02a2a'}">(${followers_change>=0?'+':''}${followers_change})</span></div><div class="metric-row"><div class="metric-block"><div style="font-size:12px;color:var(--muted)">Eng</div><div class="metric-value">${totalEng}%</div></div><div class="metric-block"><div style="font-size:12px;color:var(--muted)">Posts</div><div class="metric-value">${postsCount}</div></div><div class="metric-block"><div style="font-size:12px;color:var(--muted)">Videos</div><div class="metric-value">${videosCount}</div></div></div></div>`;
+    });
+    container.innerHTML = html;
+  }
+
+  function renderTop5(filtered){
+    const valid = prepareRows(filtered);
+    const top = valid.slice().sort((a,b)=>b.views - a.views).slice(0,5);
+    let html = '<table><thead><tr><th>#</th><th>Platform</th><th>Page</th><th>Date</th><th>Title</th><th>Views</th><th></th></tr></thead><tbody>';
+    top.forEach((r,i)=>{
+      const t = r.content_title.length>80? r.content_title.slice(0,77)+'...' : r.content_title;
+      const btn = r.permalink ? `<a class="view-btn" href="${r.permalink}" target="_blank">View</a>` : '';
+      html += `<tr><td>${i+1}</td><td>${r.platform}</td><td>${r.page_name}</td><td>${r.post_date_display}</td><td>${t}</td><td style="text-align:right">${r.views}</td><td style="text-align:right">${btn}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('top5Table').innerHTML = html;
+  }
+
+  function renderFullTable(filtered){
+    const valid = prepareRows(filtered);
+    let html = '<table><thead><tr><th>Platform</th><th>Page</th><th>Date</th><th>Title</th><th>Type</th><th>Likes</th><th>Comments</th><th>Share</th><th>Saves</th><th>Views</th><th>Followers</th><th></th></tr></thead><tbody>';
+    valid.forEach(r=>{
+      const t = r.content_title.length>100? r.content_title.slice(0,97)+'...' : r.content_title;
+      const btn = r.permalink ? `<a class="view-btn" href="${r.permalink}" target="_blank">View</a>` : '';
+      html += `<tr><td>${r.platform}</td><td>${r.page_name}</td><td>${r.post_date_display}</td><td>${t}</td><td>${r.post_type}</td><td>${r.likes}</td><td>${r.comments}</td><td>${r.share}</td><td>${r.saves}</td><td>${r.views}</td><td>${r.followers}</td><td style="text-align:right">${btn}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('fullTable').innerHTML = html;
+  }
+
+  function renderQuickInsights(filtered){
+    const valid = prepareRows(filtered);
+    const totalViews = valid.reduce((s,r)=>s+(r.views||0),0);
+    const avgEng = valid.length ? (valid.reduce((s,r)=>s+(r.eng_rate_pct||0),0)/valid.length).toFixed(1) : '0.0';
+    const totalPosts = valid.length;
+    const totalVideos = valid.filter(r=>r.post_type === 'VIDEO').length;
+    document.getElementById('quickInsights').innerHTML = `Posts in view: <strong>${totalPosts}</strong> • Videos: <strong>${totalVideos}</strong><br/>Total views: <strong>${totalViews}</strong> • Avg engagement: <strong>${avgEng}%</strong>`;
+  }
+
+  function downloadCsv(rows){
+    const header = ['platform','page_name','post_date','content_title','post_type','is_video','likes','comments','share','saves','views','followers','permalink'];
+    const lines = [header.join(',')];
+    rows.forEach(r=>{ const line = header.map(h=>`"${String(r[h]!==undefined?r[h]:'').replace(/"/g,'""')}"`).join(','); lines.push(line); });
+    const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+    const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='filtered_data.csv'; a.click(); URL.revokeObjectURL(url);
+  }
+
+  // main pipeline: apply filters and render using valid rows
+  function renderFromRows(rawRows){
+    const prepared = prepareRows(rawRows);
+    populatePageFilter(prepared);
+    const fromVal=document.getElementById('from').value;
+    const toVal=document.getElementById('to').value;
+    const pageSel=document.getElementById('pageFilter').value || 'All';
+    const platformSel=document.getElementById('platformFilter').value || 'All';
+    const fromDate = fromVal? parseDateSafe(fromVal) : null;
+    const toDate = toVal? parseDateSafe(toVal) : null;
+
+    const filtered = prepared.filter(r=>{
+      // use dateOnly comparisons
+      if(fromDate && r.post_date_obj && dateOnly(r.post_date_obj).getTime() < dateOnly(fromDate).getTime()) return false;
+      if(toDate && r.post_date_obj && dateOnly(r.post_date_obj).getTime() > dateOnly(toDate).getTime()) return false;
+      if(pageSel !== 'All' && r.page_name !== pageSel) return false;
+      if(platformSel !== 'All' && r.platform !== platformSel) return false;
+      return true;
+    });
+
+    renderKPIs(filtered);
+    renderPagesGrid(prepared, filtered);
+    renderTop5(filtered);
+    renderFullTable(filtered);
+    renderQuickInsights(filtered);
+    document.getElementById('exportCsvBtn').onclick = ()=> downloadCsv(filtered);
+  }
+
+  // initial render
+  renderFromRows(RAW_DATA);
+
+  // wire controls
+  document.getElementById('pageFilter').addEventListener('change', ()=> renderFromRows(RAW_DATA));
+  document.getElementById('platformFilter').addEventListener('change', ()=> renderFromRows(RAW_DATA));
+  document.getElementById('from').addEventListener('change', ()=> renderFromRows(RAW_DATA));
+  document.getElementById('to').addEventListener('change', ()=> renderFromRows(RAW_DATA));
+
+  // init flatpickr after DOM ready
+  document.addEventListener('DOMContentLoaded', function(){
+    if (typeof flatpickr === 'function') {
+      flatpickr("#from", { dateFormat: "Y-m-d", clickOpens: true, allowInput: false });
+      flatpickr("#to",   { dateFormat: "Y-m-d", clickOpens: true, allowInput: false });
+    }
+  });
+
+  // Refresh button: CSV then Apps Script fallback
+  document.getElementById('refreshBtn').addEventListener('click', async ()=>{
+    const btn = document.getElementById('refreshBtn');
+    try{
+      btn.textContent = 'Refreshing...';
+      // CSV attempt
+      try {
+        const resp = await fetch(CSV_URL, { cache: 'no-store' });
+        if(!resp.ok) throw new Error('CSV HTTP ' + resp.status);
+        let text = await resp.text();
+        // normalize line endings and strip BOM
+        text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+        const lines = text.split('\n');
+        // skip empty leading/trailing lines
+        while(lines.length && lines[0].trim() === '') lines.shift();
+        while(lines.length && lines[lines.length-1].trim() === '') lines.pop();
+        if(lines.length < 1) throw new Error('CSV returned no rows');
+
+        // use parseCsvLine for header as well (handles quoted commas)
+        const headers = parseCsvLine(lines[0]).map(h=>h.trim());
+        const rows = [];
+        for(let i=1;i<lines.length;i++){
+          const raw = lines[i];
+          if(raw.trim() === '') continue;
+          const vals = parseCsvLine(raw);
+          // If lengths mismatch, attempt to pad or join extras into last column
+          if(vals.length < headers.length){
+            while(vals.length < headers.length) vals.push('');
+          } else if(vals.length > headers.length){
+            // join extras into the last column
+            const extras = vals.slice(headers.length-1).join(',');
+            vals.splice(headers.length-1, vals.length - (headers.length-1), extras);
+          }
+          const obj = {};
+          for(let j=0;j<headers.length;j++){
+            const key = headers[j] || `col${j}`;
+            obj[key] = vals[j] !== undefined ? vals[j] : '';
+          }
+          rows.push(obj);
+        }
+
+        RAW_DATA = rows;
+        renderFromRows(RAW_DATA);
+        btn.textContent = 'Refresh';
+        return;
+      } catch(csvErr){
+        console.warn('CSV fetch/parse failed:', csvErr);
+      }
+
+      // Apps Script fallback if provided
+      if(APPS_SCRIPT_FALLBACK && APPS_SCRIPT_FALLBACK.length > 10){
+        try {
+          const resp2 = await fetch(APPS_SCRIPT_FALLBACK, { cache: 'no-store' });
+          if(!resp2.ok) throw new Error('AppsScript HTTP ' + resp2.status);
+          const payload = await resp2.json();
+          if(Array.isArray(payload)) {
+            RAW_DATA = payload;
+          } else if(payload && Array.isArray(payload.rows)) {
+            RAW_DATA = payload.rows;
+          } else {
+            throw new Error('Unexpected JSON shape from AppsScript');
+          }
+          renderFromRows(RAW_DATA);
+          btn.textContent = 'Refresh';
+          return;
+        } catch(jsErr){
+          console.warn('Apps Script fallback failed:', jsErr);
+        }
+      }
+
+      throw new Error('Both CSV fetch and Apps Script JSON fallback failed. Check sheet sharing or provide a working Apps Script URL.');
+    } catch(err){
+      console.error('Refresh failed:', err);
+      alert('Refresh failed: ' + err + '\n\nTips:\n - If your sheet is private, deploy an Apps Script web-app and pass its URL with --apps-script-url when running the generator.\n - Or make the sheet "Anyone with link - Viewer" and try again.');
+      btn.textContent = 'Refresh';
+    }
+  });
+</script>
+</body>
+</html>
